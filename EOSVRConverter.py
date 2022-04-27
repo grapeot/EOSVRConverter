@@ -3,7 +3,7 @@ import cv2
 
 # From https://github.com/kylemcdonald/FisheyeToEquirectangular
 class FisheyeToEquirectangular:
-    def __init__(self, n=2048, side=3072, blending=16, aperture=1):
+    def __init__(self, n=2048, side=3600, blending=16, aperture=1):
         self.blending = blending
         blending_ratio = blending / n
         x_samples = np.linspace(0-blending_ratio, 1+blending_ratio, n+blending*2)
@@ -45,28 +45,29 @@ class FisheyeToEquirectangular:
             borderMode=border
         )
 
+    def getLeftRightFisheyeImage(self, imgfn):
+        img = cv2.imread(imgfn)
+        h, w, c = img.shape
+        centerLx = w // 4 - 50
+        centerRx = w * 3 // 4 + 50
+        centerY = h // 2 + 50
+        fisheyeR = 1800
+        imgL = img[centerY - fisheyeR: centerY + fisheyeR, centerLx - fisheyeR: centerLx + fisheyeR, :]
+        imgR = img[centerY - fisheyeR: centerY + fisheyeR, centerRx - fisheyeR: centerRx + fisheyeR, :]
+        return imgL, imgR
 
-def getLeftRightFisheyeImage(imgfn):
-    img = cv2.imread(imgfn)
-    h, w, c = img.shape
-    centerLx = w // 4 - 50
-    centerRx = w * 3 // 4 + 50
-    centerY = h // 2 + 50
-    fisheyeR = 1800
-    imgL = img[centerY - fisheyeR: centerY + fisheyeR, centerLx - fisheyeR: centerLx + fisheyeR, :]
-    imgR = img[centerY - fisheyeR: centerY + fisheyeR, centerRx - fisheyeR: centerRx + fisheyeR, :]
-    return imgL, imgR
+    def correctForImage(self, imgfn, outfn):
+        imgL, imgR = self.getLeftRightFisheyeImage(imgfn)
+        newimg = self.unwarp_single(imgL)
+        newimgR = cv2.rotate(newimg, cv2.ROTATE_180)
+        newimg = self.unwarp_single(imgR)
+        newimgL = cv2.rotate(newimg, cv2.ROTATE_180)
+        newimg = np.hstack((newimgL, newimgR))
+        cv2.imwrite(outfn, newimg)
 
-
-def correctForImage(imgfn, outfn):
-    imgL, imgR = getLeftRightFisheyeImage(imgfn)
-    obj = FisheyeToEquirectangular(side=1800*2)
-    newimg = obj.unwarp_single(imgL)
-    newimgR = cv2.rotate(newimg, cv2.ROTATE_180)
-    newimg = obj.unwarp_single(imgR)
-    newimgL = cv2.rotate(newimg, cv2.ROTATE_180)
-    newimg = np.hstack((newimgL, newimgR))
-    cv2.imwrite(outfn, newimg)
 
 if __name__ == '__main__':
-    correctForImage('HorizontalTest2.jpg', 'HT2.jpg')
+    # We don't have a command line interface for now to provide maximum 
+    # efficiency (e.g. no need to intialize FisheyeToEquirectangular every time)
+    converter = FisheyeToEquirectangular()
+    converter.correctForImage('HorizontalTest2.jpg', 'HT2.jpg')
