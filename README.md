@@ -13,9 +13,7 @@ However, this also limits its capability to perform automatic horizontal correct
 So there is no gaurantee the horizon is correct.
 When the photo was taken with too much derivation from the horizonal position (tilt etc.) the photo may bring disorientation and dizziness.
 The speed is about 10~20x faster than the EOS VR Utility though, and could be more if we turn on the multi-threading.
-
-It should also be easy to adapt to other fisheye lenses and systems, and enable multi-core processing.
-I may extend it to videos in the future.
+Similarly, the utility also support RAW videos from R5 (indirectly), with multi-core parallel support.
 
 ### Usage
 
