@@ -1,18 +1,18 @@
 # EOS VR Utility Utility
 
 This repo has two small utilities for Canon's great VR lens.
-The `EOSVRConverter.py` basically does what EOS VR Utility does, but only limited to still images.
+The `EOSVRConverter.py` basically does what EOS VR Utility does, with some bug fixes, capabilities to process RAW, and multi-core acceleration.
 `enableJpgs.py` still uses Canon's EOS VR Utility, but makes it easier to use.
 
 ## EOS VR Converter
 
-It converts a jpg from R5 + EOS VR lens to an equirectangular form, which could be rendered in VR goggles.
+It converts an image or video from R5 + EOS VR lens to an equirectangular form, which could be rendered in VR goggles.
 I used industry standard algorithms to develop this tool so the result might be different from EOS VR Utility's result.
 Currently it doesn't depend on the EXIF data, so it doesn't require the image to be from the body, and thus could support jpg files derived from the RAW file.
 However, this also limits its capability to perform automatic horizontal correction.
 So there is no gaurantee the horizon is correct.
 When the photo was taken with too much derivation from the horizonal position (tilt etc.) the photo may bring disorientation and dizziness.
-The speed is about 10~20x faster than the EOS VR Utility though, and could be more if we turn on the multi-threading.
+The speed is about 10~20x faster than the EOS VR Utility though.
 Similarly, the utility also supports RAW videos from R5 (indirectly), with multi-core acceleration.
 
 ### Usage
@@ -20,6 +20,7 @@ Similarly, the utility also supports RAW videos from R5 (indirectly), with multi
 This is a python script, so one needs to have some basic understanding of python in order to use it.
 First install python and dependencies in the requirement.
 And then modify the code in the `EOSVRConverter.py` as you like, epsecially the `main` function.
+It has quite some personalized adjustment embedded in, so I strongly suggest to first read the code instead of execute it blindly.
 
 ## EnableJpgs
 
