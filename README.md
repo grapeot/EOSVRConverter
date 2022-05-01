@@ -1,8 +1,9 @@
-# EOS VR Utility Utility
+# EOS VR Converter
 
-This repo has two small utilities for Canon's great VR lens.
+This repo provides a utility for Canon's great VR lens.
 The `EOSVRConverter.py` basically does what EOS VR Utility does, with some bug fixes, capabilities to process RAW, and multi-core acceleration.
-`enableJpgs.py` still uses Canon's EOS VR Utility, but makes it easier to use.
+`enableJpgs.py` is provided for legacy use only.
+It still uses Canon's EOS VR Utility, but makes it easier to use.
 
 ## EOS VR Converter
 
