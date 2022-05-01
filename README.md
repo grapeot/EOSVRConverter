@@ -5,9 +5,9 @@ The workflow aims to handle the current painpoints of the EOS VR Utility:
 
 * RAW formats are unsupported for both still and video;
 * Operation efficiency is not a focus of the software design, which has many blocking long operations. The users often have to wait for minutes before able to begin export;
-* There are some artifacts in the parallex correction, sometimes resulting in the dizziness or cross eyes.
+* There are some artifacts in the parallex correction, sometimes resulting in dizziness or cross eyes.
 
-The utility allows for the following workflow instead:
+The utility allows for the following workflows instead:
 
 ### Photos
 
@@ -17,9 +17,9 @@ The utility allows for the following workflow instead:
 
 ### Videos
 
-* [Optional] Perform RAW decoding, video color grading (if you use Canon Log) and other adjustment in your favorite editing tools. Export the result to mp4 files.
-* If you use All-I format (instead of RAW formats), it's possible to skip the previous step and directly begin from the mp4 files right from the body. In this case, use the `EOSVRConverter.py` to do color grading, auto adjustment, and equirectangular transform to png files. It also extracts audio for future use.
-* Use `VideoCombiner.py` to optionally launch Topaz Sharpen AI to boost the clarity. And then it combines the frames and the audio into a mp4 file which can be played on VR goggles.
+* [Optional] Perform RAW decoding, video color grading (if you use Canon Log) and other adjustment in your favorite editing tools. Export the result to MP4 files.
+* If you use All-I format (instead of RAW formats), it's possible to skip the previous step and directly begin from the mp4 files right from the body. In this case, use the `EOSVRConverter.py` to do color grading, auto adjustment, and equirectangular transform to png files. It also extracts audio for future use. Otherwise, one can also use `EOSVRConverter.py` for equirectangular transform purpose only, similarly in a parallel, efficient, and set-and-go manner.
+* Use `VideoCombiner.py` to optionally launch Topaz Sharpen AI to boost the clarity. And then the python script combines the frames and the audio into a MP4 file which can be played on VR goggles.
 
 `enableJpgs.py` is provided for legacy use only.
 
