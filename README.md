@@ -1,13 +1,31 @@
 # EOS VR Converter
 
-This repo provides a utility for Canon's great VR lens.
-The `EOSVRConverter.py` basically does what EOS VR Utility does, with some bug fixes, capabilities to process RAW, and multi-core acceleration.
+This repo provides an alternative workflow than the EOS VR Utility for Canon's great VR lens.
+The workflow aims to handle the current painpoints of the EOS VR Utility:
+
+* RAW formats are unsupported for both still and video;
+* Operation efficiency is not a focus of the software design, which has many blocking long operations. The users often have to wait for minutes before able to begin export;
+* There are some artifacts in the parallex correction, sometimes resulting in the dizziness or cross eyes.
+
+The utility allows for the following workflow instead:
+
+### Photos
+
+* [Optional] Perform image adjustments from RAW files in your favorite editing tools. Export the result to JPG files.
+* Use the `EOSVRConverter.py` to convert the images to equirectangular format in batch, in parallel, in a set and go manner.
+* [Optional] If resolution is a concern, I usually use Topaz Sharpen AI to boost the clarity.
+
+### Videos
+
+* [Optional] Perform RAW decoding, video color grading (if you use Canon Log) and other adjustment in your favorite editing tools. Export the result to mp4 files.
+* If you use All-I format (instead of RAW formats), it's possible to skip the previous step and directly begin from the mp4 files right from the body. In this case, use the `EOSVRConverter.py` to do color grading, auto adjustment, and equirectangular transform to png files. It also extracts audio for future use.
+* Use `VideoCombiner.py` to optionally launch Topaz Sharpen AI to boost the clarity. And then it combines the frames and the audio into a mp4 file which can be played on VR goggles.
+
 `enableJpgs.py` is provided for legacy use only.
-It still uses Canon's EOS VR Utility, but makes it easier to use.
 
-## EOS VR Converter
+## Technical Details
 
-It converts an image or video from R5 + EOS VR lens to an equirectangular form, which could be rendered in VR goggles.
+This utility converts an image or video from R5 + EOS VR lens to an equirectangular form, which could be rendered in VR goggles.
 I used industry standard algorithms to develop this tool so the result might be different from EOS VR Utility's result.
 Currently it doesn't depend on the EXIF data, so it doesn't require the image to be from the body, and thus could support jpg files derived from the RAW file.
 However, this also limits its capability to perform automatic horizontal correction.
@@ -16,14 +34,12 @@ When the photo was taken with too much derivation from the horizonal position (t
 The speed is about 10~20x faster than the EOS VR Utility though.
 Similarly, the utility also supports RAW videos from R5 (indirectly), with multi-core acceleration.
 
-### Usage
-
 This is a python script, so one needs to have some basic understanding of python in order to use it.
 First install python and dependencies in the requirement.
 And then modify the code in the `EOSVRConverter.py` as you like, epsecially the `main` function.
 It has quite some personalized adjustment embedded in, so I strongly suggest to first read the code instead of execute it blindly.
 
-## EnableJpgs
+## [Legacy] EnableJpgs
 
 When using the great EOS VR system, I got two pain points.
 The first is the software doesn't accept RAW files, even for images.
@@ -48,19 +64,3 @@ python ./enableJpgs.py --jpgdir ./jpgs --rawdir ./raw_jpgs
 ```
 
 This will write corresponding xml files to `./jpgs`, and patch the jpg files so the EOS VR Utility could recognize them.
-
-## My Workflow
-
-I also share my workflow of processing VR media here.
-
-* After shooting using the (great) R5 and VR lens, I have a bunch of RAW files, and corresponding jpg files.
-* I first use CaptureOne (or Lightroom) to pick the good pictures from the RAW files, edit them in the circular form, and export to high quality jpg in Adobe RGB color space (important, otherwise EOS VR Utility will output an over-saturated image).
-* Then this tool is used to enable EOS VR Utility to recognize them.
-* In the EOS VR Utility UI, a multiple selection by holding the Shift key and export would convert them to the square form.
-* Then I usually use Topaz Gigapixel to enlarge them to 16k, which solves another pain point of insufficient resolution.
-It sounds counter-intuitive because R5 is already an 8k camrea.
-But the 8k is for the photos of both eyes.
-So each eye only has 4k pixels horizontally.
-And it needs to be further divided into 180 degrees.
-So the resolution is actually not that high after alll the division.
-It turned out such kind of artificial resolution boost is pretty effective on a Oculus Quest 2.
