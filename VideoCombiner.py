@@ -15,7 +15,7 @@ if __name__ == '__main__':
     batchSize = n // TOPAZ_INSTANCE
     fnsForEachInstance = [fns[batchSize * i: batchSize * (i + 1)] for i in range(TOPAZ_INSTANCE)]
     if n > batchSize * TOPAZ_INSTANCE - 1:
-        fnsForEachInstance[-1].append(fns[batchSize * TOPAZ_INSTANCE:])
+        fnsForEachInstance[-1].extend(fns[batchSize * TOPAZ_INSTANCE:])
     processes = []
     for f in fnsForEachInstance:
         command = [TOPAZ_BIN] + f

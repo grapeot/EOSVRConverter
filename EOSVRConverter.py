@@ -154,21 +154,22 @@ class FisheyeToEquirectangular:
         imgR = img[centerY - fisheyeR: centerY + fisheyeR, centerRx - fisheyeR: centerRx + fisheyeR, :]
         return imgL, imgR
 
-    def correctForImage(self, imgfn, outfn):
+    def correctForImage(self, imgfn, outfn, shallAdjust=False):
         imgL, imgR = self.getLeftRightFisheyeImage(imgfn)
         newimg = self.unwarp_single(imgL)
         newimgR = cv2.rotate(newimg, cv2.ROTATE_180)
         newimg = self.unwarp_single(imgR)
         newimgL = cv2.rotate(newimg, cv2.ROTATE_180)
         newimg = np.hstack((newimgL, newimgR))
-        # Perform some image processing
-        newimg = shadowHighlightSaturationAdjustment(newimg, 0.05, 0.4, 50, 0.1, 0.4, 50, 0.4)
+        if shallAdjust:
+            # Perform some image processing
+            newimg = shadowHighlightSaturationAdjustment(newimg, 0.05, 0.4, 50, 0.1, 0.4, 50, 0.4)
         cv2.imwrite(outfn, newimg)
 
     # Correct all images under the correct directory in place
     def correctAllImages(self):
         fns = glob('*.jpg')
-        pool = Pool(48)
+        pool = Pool(64)
         pool.starmap(self.correctForImage, tqdm([(fn, fn) for fn in fns]))
 
     # Extract frames from the video using ffmpeg, and then perform correction for each frame (in place)
@@ -186,9 +187,14 @@ class FisheyeToEquirectangular:
         ffmpegCommand = ['ffmpeg', '-i', videofn, '-qscale:v', '2', '-vf', 'lut3d=../../../other/BT2020_CanonLog3-to-BT709_WideDR_33_FF_Ver.2.0.cube', join(outdir, "%5d.png")]
         exe = Popen(ffmpegCommand)
         exe.wait()
+        # Also extract the audio to be combined to the final video
+        ffmpegAudioCommand = ['ffmpeg', '-i', videofn, '-vn', '-acodec', 'copy', join(outdir + '_audio.aac')]
+        exe = Popen(ffmpegAudioCommand)
+        exe.wait()
         fns = [join(outdir, x) for x in listdir(outdir)]
-        pool = Pool(48)
-        pool.starmap(self.correctForImage, tqdm([(fn, fn) for fn in fns]))
+        pool = Pool(64)
+        # Perform adjustment only for videos 
+        pool.starmap(self.correctForImage, tqdm([(fn, fn, True) for fn in fns]))
 
     def correctAllVideos(self):
         fns = glob('*.mp4')
