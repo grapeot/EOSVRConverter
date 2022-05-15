@@ -2,13 +2,17 @@ import numpy as np
 import cv2
 from subprocess import Popen
 from multiprocessing import Pool
+from subprocess import Popen
 from tqdm import tqdm
 from os import mkdir, listdir
 from os.path import exists, join
 from glob import glob
+import pickle
 
+TOPAZ_BIN = r"C:\Program Files\Topaz Labs LLC\Topaz Sharpen AI\Topaz Sharpen AI.exe"
 
 # Code adapted from https://gist.github.com/HViktorTsoi/8e8b0468a9fb07842669aa368382a7df
+# Did some changes to speed up by 33% while nearly not changed the result
 def shadowHighlightSaturationAdjustment(
         img,
         shadow_amount_percent, shadow_tone_percent, shadow_radius,
@@ -33,17 +37,14 @@ def shadowHighlightSaturationAdjustment(
     shadow_gain = 1 + shadow_amount_percent * 6
     highlight_gain = 1 + highlight_amount_percent * 6
 
-    # extract RGB channel
-    height, width = img.shape[:2]
-    img = img.astype('float')
-    img_R, img_G, img_B = img[..., 2].reshape(-1), img[..., 1].reshape(-1), img[..., 0].reshape(-1)
-
     # The entire correction process is carried out in YUV space,
     # adjust highlights/shadows in Y space, and adjust colors in UV space
     # convert to Y channel (grey intensity) and UV channel (color)
-    img_Y = .3 * img_R + .59 * img_G + .11 * img_B
-    img_U = -img_R * .168736 - img_G * .331264 + img_B * .5
-    img_V = img_R * .5 - img_G * .418688 - img_B * .081312
+    height, width = img.shape[:2]
+    imgYUV = cv2.cvtColor(img, cv2.COLOR_BGR2YUV).astype('float32')
+    img_Y, img_U, img_V = imgYUV[..., 0].reshape(-1), imgYUV[..., 1].reshape(-1), imgYUV[..., 2].reshape(-1)
+    img_U -= 127
+    img_V -= 127
 
     # extract shadow / highlight
     shadow_map = 255 - img_Y * 255 / shadow_tone
@@ -90,12 +91,11 @@ def shadowHighlightSaturationAdjustment(
         img_V = w * img_V + (1 - w) * img_V * color_gain
 
     # re convert to RGB channel
-    output_R = np.int_(img_Y + 1.402 * img_V + .5)
-    output_G = np.int_(img_Y - .34414 * img_U - .71414 * img_V + .5)
-    output_B = np.int_(img_Y + 1.772 * img_U + .5)
-
-    output = np.row_stack([output_B, output_G, output_R]).T.reshape(height, width, 3)
-    output = np.minimum(np.maximum(output, 0), 255).astype(np.uint8)
+    img_Y = img_Y.astype('uint8')
+    img_U = (img_U + 127).astype('uint8')
+    img_V = (img_V + 127).astype('uint8')
+    imgYUV = np.row_stack([img_Y, img_U, img_V]).T.reshape(height, width, 3)
+    output = cv2.cvtColor(imgYUV, cv2.COLOR_YUV2BGR)
     return output
 
 
@@ -104,37 +104,43 @@ class FisheyeToEquirectangular:
     def __init__(self, n=4096, side=3600, blending=0, aperture=1):
         self.blending = blending
         blending_ratio = blending / n
-        x_samples = np.linspace(0-blending_ratio, 1+blending_ratio, n+blending*2)
-        y_samples = np.linspace(-1, 1, n)
+        if exists('fisheye.npy'):
+            data = np.load('fisheye.npy')
+            self.x, self.y = data
+        else:
+            x_samples = np.linspace(0-blending_ratio, 1+blending_ratio, n+blending*2)
+            y_samples = np.linspace(-1, 1, n)
 
-        # equirectangular
-        x, y = np.meshgrid(x_samples, y_samples)
+            # equirectangular
+            x, y = np.meshgrid(x_samples, y_samples)
 
-        # longitude/latitude
-        longitude = x * np.pi
-        latitude = y * np.pi / 2
+            # longitude/latitude
+            longitude = x * np.pi
+            latitude = y * np.pi / 2
 
-        # 3d vector
-        Px = np.cos(latitude) * np.cos(longitude)
-        Py = np.cos(latitude) * np.sin(longitude)
-        Pz = np.sin(latitude)
+            # 3d vector
+            Px = np.cos(latitude) * np.cos(longitude)
+            Py = np.cos(latitude) * np.sin(longitude)
+            Pz = np.sin(latitude)
 
-        # 2d fisheye
-        aperture *= np.pi
-        r = 2 * np.arctan2(np.sqrt(Px*Px + Pz*Pz), Py) / aperture
-        theta = np.arctan2(Pz, Px)
-        theta += np.pi
-        x = r * np.cos(theta)
-        y = r * np.sin(theta)
+            # 2d fisheye
+            aperture *= np.pi
+            r = 2 * np.arctan2(np.sqrt(Px*Px + Pz*Pz), Py) / aperture
+            theta = np.arctan2(Pz, Px)
+            theta += np.pi
+            x = r * np.cos(theta)
+            y = r * np.sin(theta)
 
-        x = np.clip(x, -1, 1)
-        y = np.clip(y, -1, 1)
+            x = np.clip(x, -1, 1)
+            y = np.clip(y, -1, 1)
 
-        x = (-x + 1) * side / 2
-        y = (y + 1) * side / 2
+            x = (-x + 1) * side / 2
+            y = (y + 1) * side / 2
 
-        self.x = x.astype(np.float32)
-        self.y = y.astype(np.float32)
+            self.x = x.astype(np.float32)
+            self.y = y.astype(np.float32)
+            data = [self.x, self.y]
+            np.save('fisheye.npy', data)
     
     def unwarp_single(self, img, interpolation=cv2.INTER_LINEAR, border=cv2.BORDER_REFLECT):
         return cv2.remap(
@@ -167,34 +173,40 @@ class FisheyeToEquirectangular:
         cv2.imwrite(outfn, newimg)
 
     # Correct all images under the correct directory in place
-    def correctAllImages(self):
+    def correctAllImages(self, pool):
         fns = glob('*.jpg')
-        pool = Pool(64)
         pool.starmap(self.correctForImage, tqdm([(fn, fn) for fn in fns]))
+        # Use Topaz Sharpen AI to enhance resolution
+        command = [TOPAZ_BIN] + fns
+        process = Popen(command)
+        process.wait()
 
     # Extract frames from the video using ffmpeg, and then perform correction for each frame (in place)
     # Note the video here could be exported from Premiere or other software, and not necessarily the
     # out-of-body mp4 files. So even RAW could be supported (indirectly).
     # We also give another example of directly reading in the video file (not RAW though, could be ALL-I)
     # before color grading, and invoke ffmpeg to do color grading.
-    def correctForVideo(self, videofn, outdir):
+    def correctForVideo(self, videofn, outdir, pool):
         if not exists(outdir):
             mkdir(outdir)
         # Example 1: don't do color grading
         # ffmpegCommand = ['ffmpeg', '-i', videofn, '-qscale:v', '2', join(outdir, "%5d.png")]
         # Example 2: do color grading. Change the cube file path to your case.
         # Cube files can be downloaded from Canon website.
-        ffmpegCommand = ['ffmpeg', '-i', videofn, '-qscale:v', '2', '-vf', 'lut3d=../../../other/BT2020_CanonLog3-to-BT709_WideDR_33_FF_Ver.2.0.cube', join(outdir, "%5d.png")]
+        ffmpegCommand = ['ffmpeg', '-i', videofn, '-qscale:v', '2', '-vf', 'lut3d=BT2020_CanonLog3-to-BT709_WideDR_33_FF_Ver.2.0.cube', join(outdir, "%5d.png")]
         exe = Popen(ffmpegCommand)
         exe.wait()
         # Also extract the audio to be combined to the final video
         ffmpegAudioCommand = ['ffmpeg', '-i', videofn, '-vn', '-acodec', 'copy', join(outdir + '_audio.aac')]
         exe = Popen(ffmpegAudioCommand)
         exe.wait()
+        # Perform the mapping and adjustment (slow) in parallel
         fns = [join(outdir, x) for x in listdir(outdir)]
-        pool = Pool(64)
-        # Perform adjustment only for videos 
-        pool.starmap(self.correctForImage, tqdm([(fn, fn, True) for fn in fns]))
+        pool.starmap(self.correctForImage, tqdm([(fn, fn) for fn in fns]))
+        #pool.starmap(self.correctForImage, tqdm([(fn, fn, True) for fn in fns]))
+        # Get an initial version without sharpening for quick review
+        command = ['ffmpeg', '-r', '30', '-i', f'{outdir}/%5d.png', '-i', f'{outdir}_audio.aac', '-c:v', 'libx264', '-vf', 'scale=8192x4096', '-preset', 'fast', '-crf', '18', '-x264-params', 'mvrange=511', '-maxrate', '100M', '-bufsize', '25M', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k', '-movflags', 'faststart', videofn.lower().replace('.mp4', '_VR.mp4')]
+        exe = Popen(command)  # We don't need to wait here
 
     def correctAllVideos(self):
         fns = glob('*.mp4')
@@ -206,8 +218,16 @@ if __name__ == '__main__':
     # We don't have a command line interface for now to provide maximum 
     # efficiency (e.g. no need to intialize FisheyeToEquirectangular every time)
     # Sample usage:
+    procCount = min(56, cpu_count() // 2)
+    print(f'Creating a process pool with {procCount} processed...')
+    pool = Pool(procCount)
     converter = FisheyeToEquirectangular()
     #converter.correctForImage('./tmpframes2/00001.png', './tmpframes2/00001_corrected.png')
-    converter.correctForVideo('../VRVideoRaw/IMG_3880.MP4', 'tmpframes3880')
+    #converter.correctForVideo('../VRVideoRaw/IMG_3880.MP4', 'tmpframes3880')
     #converter.correctAllImages()
+    #for i in list(reversed(range(4014, 4019))):
+        #fn = f'IMG_{i}.MP4'
+        #newfn = f'IMG_{i}'
+        #converter.correctForVideo(fn, newfn, pool)
+    converter.correctAllImages(pool)
     #converter.correctAllVideos()
