@@ -4,7 +4,7 @@ from subprocess import Popen
 from multiprocessing import Pool
 from subprocess import Popen
 from tqdm import tqdm
-from os import mkdir, listdir
+from os import mkdir, listdir, cpu_count
 from os.path import exists, join
 from glob import glob
 import pickle
@@ -202,8 +202,8 @@ class FisheyeToEquirectangular:
         exe.wait()
         # Perform the mapping and adjustment (slow) in parallel
         fns = [join(outdir, x) for x in listdir(outdir)]
-        pool.starmap(self.correctForImage, tqdm([(fn, fn) for fn in fns]))
-        #pool.starmap(self.correctForImage, tqdm([(fn, fn, True) for fn in fns]))
+        #pool.starmap(self.correctForImage, tqdm([(fn, fn) for fn in fns]))
+        pool.starmap(self.correctForImage, tqdm([(fn, fn, True) for fn in fns]))
         # Get an initial version without sharpening for quick review
         command = ['ffmpeg', '-r', '30', '-i', f'{outdir}/%5d.png', '-i', f'{outdir}_audio.aac', '-c:v', 'libx264', '-vf', 'scale=8192x4096', '-preset', 'fast', '-crf', '18', '-x264-params', 'mvrange=511', '-maxrate', '100M', '-bufsize', '25M', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k', '-movflags', 'faststart', videofn.lower().replace('.mp4', '_VR.mp4')]
         exe = Popen(command)  # We don't need to wait here
