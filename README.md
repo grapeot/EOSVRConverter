@@ -21,6 +21,8 @@ The utility allows for the following workflows instead:
 * If you use All-I format (instead of RAW formats), it's possible to skip the previous step and directly begin from the mp4 files right from the body. In this case, use the `EOSVRConverter.py` to do color grading, auto adjustment, and equirectangular transform to png files. It also extracts audio for future use. Otherwise, one can also use `EOSVRConverter.py` for equirectangular transform purpose only, similarly in a parallel, efficient, and set-and-go manner.
 * Use `VideoCombiner.py` to optionally launch Topaz Sharpen AI to boost the clarity. And then the python script combines the frames and the audio into a MP4 file which can be played on VR goggles.
 
+`EOSVRConverter_Red.py` provides support on RED V-Raptor VV. Check the code for more details.
+
 `enableJpgs.py` is provided for legacy use only.
 
 ## Technical Details
