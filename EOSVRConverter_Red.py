@@ -22,10 +22,10 @@ from shutil import move
 import logging
 import ray
 from ray.util.queue import Queue
-from multiprocess import Pool
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 TOPAZ_BIN = r"C:\Program Files\Topaz Labs LLC\Topaz Sharpen AI\Topaz Sharpen AI.exe"
+FILE_EXTNAME = '.tif'
 
 # From https://github.com/kylemcdonald/FisheyeToEquirectangular
 class FisheyeToEquirectangular:
@@ -102,7 +102,15 @@ class FisheyeToEquirectangular:
 
     def correctForImage(self, img, outfn, rotator=None):
         if type(img) == str:
-            img = cv2.imread(img, -1)
+            imgpath = img
+            try:
+                img = cv2.imread(img)
+            except:
+                print(f'Failed to load image {imgpath}')
+                return None
+        if img is None:
+            print(f'Failed to load image {imgpath}')
+            return None
         imgL, imgR = self.getLeftRightFisheyeImage(img)
         newimg = self.unwarp_single(imgL)
         newimgR = cv2.rotate(newimg, cv2.ROTATE_180)
@@ -124,29 +132,23 @@ class FisheyeToEquirectangular:
         process = Popen(command)
         process.wait()
 
-
-@ray.remote(num_cpus=1.2, memory=1*1024*1024*1024)
+@ray.remote(num_cpus=1, memory=3*1024*1024*1024)
 def launchWarpTask(correctorRef, fn):
     img = cv2.imread(fn, -1)
-    return correctorRef.correctForImage(img, fn, False, None)
-
-@ray.remote(memory=30*1024*1024*1024)
-def runCommand(cmd):
-    Popen(cmd).wait()
+    return correctorRef.correctForImage(img, fn, None)
 
 def correctForVideo(outdir):
     if not exists(outdir):
         mkdir(outdir)
     
     # Perform the mapping in parallel
-    fns = glob(f'{outdir}/*.tif')
+    fns = glob(f'{outdir}/*{FILE_EXTNAME}')
     fns = [join(getcwd(), fn) for fn in fns]
     corrector = FisheyeToEquirectangular()
     correctorRef = ray.put(corrector)
 
     tasks = []
-    for fn in fns:
-        print(f'Submitting job for {fn}...')
+    for fn in tqdm(fns, desc='submitting jobs...'):
         tasks.append(launchWarpTask.remote(correctorRef, fn))
     tasks = [x for x in tasks if x is not None]
     for t in tqdm(tasks):

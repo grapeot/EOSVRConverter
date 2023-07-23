@@ -17,7 +17,7 @@ The utility allows for the following workflows instead:
 
 ### Videos
 
-* [Optional] Perform RAW decoding, video color grading (if you use Canon Log) and other adjustment in your favorite editing tools. Export the result to MP4 files.
+* Perform RAW decoding, video color grading (if you use Canon Log) and other adjustment in your favorite editing tools. Export the result to MP4 files.
 * If you use All-I format (instead of RAW formats), it's possible to skip the previous step and directly begin from the mp4 files right from the body. In this case, use the `EOSVRConverter.py` to do color grading, auto adjustment, and equirectangular transform to png files. It also extracts audio for future use. Otherwise, one can also use `EOSVRConverter.py` for equirectangular transform purpose only, similarly in a parallel, efficient, and set-and-go manner.
 * Use `VideoCombiner.py` to optionally launch Topaz Sharpen AI to boost the clarity. And then the python script combines the frames and the audio into a MP4 file which can be played on VR goggles.
 
