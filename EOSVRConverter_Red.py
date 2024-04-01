@@ -91,10 +91,10 @@ class FisheyeToEquirectangular:
 
     def getLeftRightFisheyeImage(self, img):
         h, w, c = img.shape
-        # Key parameters for fitting to RED V-Raptor VV
-        centerLx = w // 4 + 170
-        centerRx = w * 3 // 4 - 170
-        centerY = h // 2
+        # Use the intrinsic matrix from actual calibration
+        centerLx = 2248
+        centerRx = 5967
+        centerY = 2250
         fisheyeR = 1600
         imgL = img[centerY - fisheyeR: centerY + fisheyeR, centerLx - fisheyeR: centerLx + fisheyeR, :]
         imgR = img[centerY - fisheyeR: centerY + fisheyeR, centerRx - fisheyeR: centerRx + fisheyeR, :]
